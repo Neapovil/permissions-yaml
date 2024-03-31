@@ -1,11 +1,11 @@
-name: CHANGE
-main: com.github.neapovil.change.Change
+name: PermissionsYaml
+main: com.github.neapovil.permissionsyaml.PermissionsYaml
 version: 1.0.0
 api-version: 1.19
 author: Neapovil
-website: https://github.com/Neapovil/CHANGE
+website: https://github.com/Neapovil/permissions-yaml
 depend:
   - CommandAPI
 permissions:
-  CHANGE.command:
+  permissionsyaml.command:
     default: op
