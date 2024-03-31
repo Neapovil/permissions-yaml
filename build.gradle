@@ -1,0 +1,33 @@
+plugins {
+  id "java-library"
+  id "io.papermc.paperweight.userdev" version "1.5.11"
+  id "xyz.jpenilla.run-paper" version "2.2.2"
+}
+
+version = "1.19.4"
+group = "com.github.neapovil"
+
+compileJava.options.encoding = "UTF-8"
+compileJava.options.release = 17
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+repositories {
+  mavenCentral()
+  maven { url = "https://repo.codemc.org/repository/maven-public/" }
+}
+
+dependencies {
+  paperweight.paperDevBundle("1.19.4-R0.1-SNAPSHOT")
+
+  compileOnly group: "dev.jorel", name: "commandapi-bukkit-core", version: "9.3.0"
+}
+
+tasks {
+  runServer {
+    minecraftVersion("1.19.4")
+    
+    downloadPlugins {
+      hangar("CommandAPI", "9.3.0")
+    }
+  }
+}

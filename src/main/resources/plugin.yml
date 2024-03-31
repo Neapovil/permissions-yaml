@@ -1,0 +1,11 @@
+name: CHANGE
+main: com.github.neapovil.change.Change
+version: 1.0.0
+api-version: 1.19
+author: Neapovil
+website: https://github.com/Neapovil/CHANGE
+depend:
+  - CommandAPI
+permissions:
+  CHANGE.command:
+    default: op
