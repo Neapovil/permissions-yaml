@@ -7,5 +7,9 @@ website: https://github.com/Neapovil/permissions-yaml
 depend:
   - CommandAPI
 permissions:
-  permissionsyaml.command:
+  permissionsymal.command:
+    default: op
+  permissionsyaml.command.players:
+    default: op
+  permissionsyaml.command.reload:
     default: op
