@@ -210,8 +210,6 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
         final Player player = event.getPlayer();
         final PermissionAttachment permissionattachment = this.permissionAttachment(player);
 
-        this.playersResource.findOrCreate(player.getUniqueId()).groups.forEach(System.out::println);
-
         this.playersResource.findOrCreate(player.getUniqueId()).groups.forEach(i -> permissionattachment.setPermission(i, true));
         player.updateCommands();
     }
