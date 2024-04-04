@@ -65,7 +65,9 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
                 .withArguments(new OfflinePlayerArgument("offlinePlayer"))
                 .withArguments(new LiteralArgument("groups"))
                 .withArguments(new LiteralArgument("add"))
-                .withArguments(new StringArgument("groupName").replaceSuggestions(ArgumentSuggestions.strings(this.groups())))
+                .withArguments(new StringArgument("groupName").replaceSuggestions(ArgumentSuggestions.strings(info -> {
+                    return this.groups().toArray(String[]::new);
+                })))
                 .executes((sender, args) -> {
                     final OfflinePlayer offlineplayer = (OfflinePlayer) args.get("offlinePlayer");
                     final String groupname = (String) args.get("groupName");
