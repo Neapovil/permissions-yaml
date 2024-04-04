@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.jetbrains.annotations.Nullable;
+
 public final class PlayersResource
 {
     public final List<Player> players = new ArrayList<>();
@@ -20,6 +22,7 @@ public final class PlayersResource
     public static class Player
     {
         public UUID uuid;
+        @Nullable
         public String group;
 
         public Player(UUID uuid)
