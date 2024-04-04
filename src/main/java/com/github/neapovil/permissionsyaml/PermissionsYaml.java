@@ -36,7 +36,7 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
     public Path filePath;
     public FileConfiguration fileConfiguration;
     public PlayersResource playersResource;
-    private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    private final Gson gson = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
     private final Map<UUID, PermissionAttachment> attachments = new HashMap<>();
 
     @Override
@@ -63,8 +63,8 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
                 .withPermission("permissionsyaml.command")
                 .withArguments(new LiteralArgument("players").withPermission("permissionsyaml.command.players"))
                 .withArguments(new OfflinePlayerArgument("offlinePlayer"))
-                .withArguments(new LiteralArgument("groups"))
-                .withArguments(new LiteralArgument("add"))
+                .withArguments(new LiteralArgument("group"))
+                .withArguments(new LiteralArgument("set"))
                 .withArguments(new StringArgument("groupName").replaceSuggestions(ArgumentSuggestions.strings(info -> {
                     return this.groups().toArray(String[]::new);
                 })))
@@ -79,12 +79,12 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
 
                     final PlayersResource.Player permissionsplayer = this.playersResource.findOrCreate(offlineplayer.getUniqueId());
 
-                    if (permissionsplayer.groups.contains(groupname))
+                    if (permissionsplayer.group != null && permissionsplayer.group.equalsIgnoreCase(groupname))
                     {
                         throw CommandAPI.failWithString("Player already has this group");
                     }
 
-                    permissionsplayer.groups.add(groupname);
+                    permissionsplayer.group = groupname;
 
                     if (offlineplayer.isOnline())
                     {
@@ -97,11 +97,11 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
                         try
                         {
                             this.save();
-                            sender.sendMessage("Group %s added to %s".formatted(groupname, offlineplayer.getName()));
+                            sender.sendMessage("Set group %s to %s".formatted(groupname, offlineplayer.getName()));
                         }
                         catch (IOException e)
                         {
-                            final String message = "Unable to save groups for player: " + offlineplayer.getName();
+                            final String message = "Unable to save group for player: " + offlineplayer.getName();
                             this.getLogger().severe(message);
                             sender.sendRichMessage("<red>" + message);
                         }
@@ -113,24 +113,20 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
                 .withPermission("permissionsyaml.command")
                 .withArguments(new LiteralArgument("players").withPermission("permissionsyaml.command.players"))
                 .withArguments(new OfflinePlayerArgument("offlinePlayer"))
-                .withArguments(new LiteralArgument("groups"))
-                .withArguments(new LiteralArgument("remove"))
-                .withArguments(new StringArgument("groupName").replaceSuggestions(ArgumentSuggestions.strings(info -> {
-                    final OfflinePlayer offlineplayer = (OfflinePlayer) info.previousArgs().get("offlinePlayer");
-                    return this.playersResource.findOrCreate(offlineplayer.getUniqueId()).groups.toArray(String[]::new);
-                })))
+                .withArguments(new LiteralArgument("group"))
+                .withArguments(new LiteralArgument("unset"))
                 .executes((sender, args) -> {
                     final OfflinePlayer offlineplayer = (OfflinePlayer) args.get("offlinePlayer");
-                    final String groupname = (String) args.get("groupName");
-
                     final PlayersResource.Player permissionsplayer = this.playersResource.findOrCreate(offlineplayer.getUniqueId());
 
-                    if (!permissionsplayer.groups.contains(groupname))
+                    if (permissionsplayer.group == null)
                     {
-                        throw CommandAPI.failWithString("Player doesn't have this group");
+                        throw CommandAPI.failWithString("Player has no group");
                     }
 
-                    permissionsplayer.groups.removeIf(i -> i.equalsIgnoreCase(groupname));
+                    final String groupname = permissionsplayer.group;
+
+                    permissionsplayer.group = null;
 
                     if (offlineplayer.isOnline())
                     {
@@ -143,7 +139,7 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
                         try
                         {
                             this.save();
-                            sender.sendMessage("Group %s remove from %s".formatted(groupname, offlineplayer.getName()));
+                            sender.sendMessage("Unset group %s from %s".formatted(groupname, offlineplayer.getName()));
                         }
                         catch (IOException e)
                         {
@@ -211,9 +207,13 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
     {
         final Player player = event.getPlayer();
         final PermissionAttachment permissionattachment = this.permissionAttachment(player);
+        final PlayersResource.Player permissionsplayer = this.playersResource.findOrCreate(player.getUniqueId());
 
-        this.playersResource.findOrCreate(player.getUniqueId()).groups.forEach(i -> permissionattachment.setPermission(i, true));
-        player.updateCommands();
+        if (permissionsplayer.group != null)
+        {
+            permissionattachment.setPermission(permissionsplayer.group, true);
+            player.updateCommands();
+        }
     }
 
     @EventHandler

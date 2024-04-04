@@ -20,7 +20,7 @@ public final class PlayersResource
     public static class Player
     {
         public UUID uuid;
-        public List<String> groups = new ArrayList<>();
+        public String group;
 
         public Player(UUID uuid)
         {
