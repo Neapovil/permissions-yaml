@@ -8,17 +8,22 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.server.ServerCommandEvent;
 import org.bukkit.permissions.PermissionAttachment;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.Nullable;
 
+import com.github.neapovil.permissionsyaml.event.PlayerPermissionsChangeEvent;
 import com.github.neapovil.permissionsyaml.resource.PlayersResource;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -98,6 +103,7 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
                         {
                             this.save();
                             sender.sendMessage("Set group %s to %s".formatted(groupname, playerprofile.getName()));
+                            this.firePlayerPermissionsChangeEvent(offlineplayer.getPlayer());
                         }
                         catch (IOException e)
                         {
@@ -140,6 +146,7 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
                         {
                             this.save();
                             sender.sendMessage("%s removed from group %s".formatted(playerprofile.getName(), groupname));
+                            this.firePlayerPermissionsChangeEvent(offlineplayer.getPlayer());
                         }
                         catch (IOException e)
                         {
@@ -202,6 +209,14 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
         return this.attachments.computeIfAbsent(player.getUniqueId(), (k) -> player.addAttachment(this));
     }
 
+    private void firePlayerPermissionsChangeEvent(@Nullable Player player)
+    {
+        this.getServer().getScheduler().runTask(this, () -> {
+            final PlayerPermissionsChangeEvent event = new PlayerPermissionsChangeEvent(player);
+            this.getServer().getPluginManager().callEvent(event);
+        });
+    }
+
     @EventHandler
     private void onPlayerJoin(PlayerJoinEvent event)
     {
@@ -220,5 +235,24 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
     private void onPlayerQuit(PlayerQuitEvent event)
     {
         this.attachments.remove(event.getPlayer().getUniqueId());
+    }
+
+    @EventHandler
+    private void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event)
+    {
+        if (event.getMessage().startsWith("/op ") || event.getMessage().startsWith("/deop "))
+        {
+            this.firePlayerPermissionsChangeEvent(event.getPlayer());
+        }
+    }
+
+    @EventHandler
+    private void onServerCommand(ServerCommandEvent event)
+    {
+        if (event.getCommand().startsWith("op ") || event.getCommand().startsWith("deop "))
+        {
+            final Player player = Bukkit.getPlayer(event.getCommand().replaceFirst("op ", "").replaceFirst("deop ", ""));
+            this.firePlayerPermissionsChangeEvent(player);
+        }
     }
 }
