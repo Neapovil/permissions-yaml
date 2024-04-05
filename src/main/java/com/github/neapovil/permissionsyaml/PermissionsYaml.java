@@ -88,20 +88,20 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
 
                     if (offlineplayer.isOnline())
                     {
-                        final Player player = (Player) offlineplayer;
+                        final Player player = offlineplayer.getPlayer();
                         this.permissionAttachment(player).setPermission(groupname, true);
                         player.updateCommands();
                     }
 
-                    this.getServer().getScheduler().runTaskAsynchronously(this, () -> {
+                    offlineplayer.getPlayerProfile().update().thenAcceptAsync(playerprofile -> {
                         try
                         {
                             this.save();
-                            sender.sendMessage("Set group %s to %s".formatted(groupname, offlineplayer.getName()));
+                            sender.sendMessage("Set group %s to %s".formatted(groupname, playerprofile.getName()));
                         }
                         catch (IOException e)
                         {
-                            final String message = "Unable to save group for player: " + offlineplayer.getName();
+                            final String message = "Unable to set group for player: " + playerprofile.getName();
                             this.getLogger().severe(message);
                             sender.sendRichMessage("<red>" + message);
                         }
@@ -130,20 +130,20 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
 
                     if (offlineplayer.isOnline())
                     {
-                        final Player player = (Player) offlineplayer;
+                        final Player player = offlineplayer.getPlayer();
                         this.permissionAttachment(player).unsetPermission(groupname);
                         player.updateCommands();
                     }
 
-                    this.getServer().getScheduler().runTaskAsynchronously(this, () -> {
+                    offlineplayer.getPlayerProfile().update().thenAcceptAsync(playerprofile -> {
                         try
                         {
                             this.save();
-                            sender.sendMessage("Unset group %s from %s".formatted(groupname, offlineplayer.getName()));
+                            sender.sendMessage("%s removed from group %s".formatted(playerprofile.getName(), groupname));
                         }
                         catch (IOException e)
                         {
-                            final String message = "Unable to save groups for player: " + offlineplayer.getName();
+                            final String message = "Unable to unset group for player: " + playerprofile.getName();
                             this.getLogger().severe(message);
                             sender.sendRichMessage("<red>" + message);
                         }
