@@ -6,6 +6,7 @@ author: Neapovil
 website: https://github.com/Neapovil/permissions-yaml
 depend:
   - CommandAPI
+  - Core
 permissions:
   permissionsymal.command:
     default: op

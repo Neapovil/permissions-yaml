@@ -1,12 +1,11 @@
 package com.github.neapovil.permissionsyaml;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -23,6 +22,7 @@ import org.bukkit.permissions.PermissionAttachment;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
 
+import com.github.neapovil.core.Core;
 import com.github.neapovil.permissionsyaml.event.PlayerPermissionsChangeEvent;
 import com.github.neapovil.permissionsyaml.resource.PlayersResource;
 import com.google.gson.Gson;
@@ -34,6 +34,7 @@ import dev.jorel.commandapi.arguments.ArgumentSuggestions;
 import dev.jorel.commandapi.arguments.LiteralArgument;
 import dev.jorel.commandapi.arguments.OfflinePlayerArgument;
 import dev.jorel.commandapi.arguments.StringArgument;
+import io.papermc.paper.util.MCUtil;
 
 public final class PermissionsYaml extends JavaPlugin implements Listener
 {
@@ -43,6 +44,7 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
     public PlayersResource playersResource;
     private final Gson gson = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
     private final Map<UUID, PermissionAttachment> attachments = new HashMap<>();
+    public final Path playersPath = this.getDataFolder().toPath().resolve("players.json");
 
     @Override
     public void onEnable()
@@ -53,14 +55,7 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
 
         this.reloadPermissions();
 
-        try
-        {
-            this.load();
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-        }
+        this.load();
 
         this.getServer().getPluginManager().registerEvents(this, this);
 
@@ -99,18 +94,13 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
                     }
 
                     offlineplayer.getPlayerProfile().update().thenAcceptAsync(playerprofile -> {
-                        try
-                        {
-                            this.save();
-                            sender.sendMessage("Set group %s to %s".formatted(groupname, playerprofile.getName()));
-                            this.firePlayerPermissionsChangeEvent(offlineplayer.getPlayer());
-                        }
-                        catch (IOException e)
-                        {
-                            final String message = "Unable to set group for player: " + playerprofile.getName();
-                            this.getLogger().severe(message);
-                            sender.sendRichMessage("<red>" + message);
-                        }
+                        this.save().whenComplete((result, ex) -> {
+                            if (ex == null)
+                            {
+                                sender.sendMessage("Set %s's group to %s".formatted(playerprofile.getName(), groupname));
+                                this.firePlayerPermissionsChangeEvent(offlineplayer.getPlayer());
+                            }
+                        });
                     });
                 })
                 .register();
@@ -132,7 +122,7 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
 
                     final String groupname = permissionsplayer.group;
 
-                    permissionsplayer.group = null;
+                    this.playersResource.players.removeIf(i -> i.uuid.equals(permissionsplayer.uuid));
 
                     if (offlineplayer.isOnline())
                     {
@@ -142,18 +132,13 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
                     }
 
                     offlineplayer.getPlayerProfile().update().thenAcceptAsync(playerprofile -> {
-                        try
-                        {
-                            this.save();
-                            sender.sendMessage("%s removed from group %s".formatted(playerprofile.getName(), groupname));
-                            this.firePlayerPermissionsChangeEvent(offlineplayer.getPlayer());
-                        }
-                        catch (IOException e)
-                        {
-                            final String message = "Unable to unset group for player: " + playerprofile.getName();
-                            this.getLogger().severe(message);
-                            sender.sendRichMessage("<red>" + message);
-                        }
+                        this.save().whenComplete((result, ex) -> {
+                            if (ex == null)
+                            {
+                                sender.sendMessage("Unset %s's from group %s".formatted(playerprofile.getName(), groupname));
+                                this.firePlayerPermissionsChangeEvent(offlineplayer.getPlayer());
+                            }
+                        });
                     });
                 })
                 .register();
@@ -184,17 +169,22 @@ public final class PermissionsYaml extends JavaPlugin implements Listener
         this.fileConfiguration = YamlConfiguration.loadConfiguration(this.filePath.toFile());
     }
 
-    public void load() throws IOException
+    private CompletableFuture<String> load()
     {
-        this.saveResource("players.json", false);
-        final String string = Files.readString(this.getDataFolder().toPath().resolve("players.json"));
-        this.playersResource = this.gson.fromJson(string, PlayersResource.class);
+        final Core core = Core.instance();
+        return core.loadResource(this, this.playersPath).whenCompleteAsync((result, ex) -> {
+            if (result != null)
+            {
+                this.playersResource = this.gson.fromJson(result, PlayersResource.class);
+            }
+        }, MCUtil.MAIN_EXECUTOR);
     }
 
-    public void save() throws IOException
+    private CompletableFuture<Void> save()
     {
+        final Core core = Core.instance();
         final String string = this.gson.toJson(this.playersResource);
-        Files.write(this.getDataFolder().toPath().resolve("players.json"), string.getBytes());
+        return core.saveResource(this.playersPath, string);
     }
 
     public Set<String> groups()
